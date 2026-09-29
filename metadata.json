@@ -1,0 +1,6 @@
+{
+  "name": "Realistic Smartphone Selfie Engine",
+  "description": "Mobile-first engine generating physically coherent, everyday Saudi smartphone selfie prompts for ChatGPT Images and Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
