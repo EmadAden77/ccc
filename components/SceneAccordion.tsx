@@ -9,6 +9,8 @@ import {
   HairstyleId,
   ExpressionId,
   VehicleSpot,
+  HoldingHand,
+  WeatherAtmosphere,
   LocationDefinition,
 } from '@/lib/types';
 import {
@@ -19,6 +21,9 @@ import {
   HAIRSTYLES,
   EXPRESSIONS,
   VEHICLE_SPOTS,
+  HOLDING_HANDS,
+  WEATHER_ATMOSPHERES,
+  IMPERFECTION_OPTIONS,
 } from '@/lib/scene-data';
 import {
   User,
@@ -51,6 +56,12 @@ interface SceneAccordionProps {
   onSelectExpression: (id: ExpressionId) => void;
   selectedTimeId: TimeOfDayId;
   onSelectTime: (id: TimeOfDayId) => void;
+  holdingHand: HoldingHand;
+  onSelectHoldingHand: (hand: HoldingHand) => void;
+  weatherAtmosphere: WeatherAtmosphere;
+  onSelectWeatherAtmosphere: (weather: WeatherAtmosphere) => void;
+  imperfectionLevel: 'authentic' | 'raw_candid';
+  onSelectImperfectionLevel: (level: 'authentic' | 'raw_candid') => void;
   validPoseIds: PoseId[];
   validCameraIds: CameraAngleId[];
 }
@@ -81,6 +92,12 @@ export function SceneAccordion({
   onSelectExpression,
   selectedTimeId,
   onSelectTime,
+  holdingHand,
+  onSelectHoldingHand,
+  weatherAtmosphere,
+  onSelectWeatherAtmosphere,
+  imperfectionLevel,
+  onSelectImperfectionLevel,
   validPoseIds,
   validCameraIds,
 }: SceneAccordionProps) {
@@ -97,6 +114,8 @@ export function SceneAccordion({
   const currentExpression = EXPRESSIONS[selectedExpressionId];
   const currentTime = TIMES_OF_DAY[selectedTimeId];
   const currentVehicleSpot = VEHICLE_SPOTS[vehicleSpot];
+  const currentWeather = WEATHER_ATMOSPHERES[weatherAtmosphere || 'clear_crisp'];
+  const currentImperfection = IMPERFECTION_OPTIONS[imperfectionLevel || 'authentic'];
 
   const isVehicleActive = vehicleSpot !== 'none';
 
@@ -114,7 +133,7 @@ export function SceneAccordion({
             <div className="min-w-0">
               <span className="block text-xs font-semibold text-white">وضعية التصوير</span>
               <span className="block text-[11px] text-amber-400/90 font-medium leading-snug line-clamp-2 mt-0.5">
-                {currentPose?.labelAr || currentPose?.label}
+                {currentPose?.labelAr || currentPose?.label} · {holdingHand === 'left' ? 'يد يسرى' : 'يد يمنى'}
               </span>
             </div>
           </div>
@@ -127,7 +146,39 @@ export function SceneAccordion({
         </button>
 
         {openSection === 'pose' && (
-          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-1.5 animate-in fade-in-50 duration-150">
+          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-2 animate-in fade-in-50 duration-150">
+            {/* يد التصوير: يمنى / يسرى */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+              <div>
+                <span className="block text-xs font-medium text-slate-300">يد مسك الهاتف</span>
+                <span className="text-[10px] text-slate-500">تحدد هندسة الذراع وتوجيه الكتف والوجه</span>
+              </div>
+              <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => onSelectHoldingHand('right')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors min-h-[30px] ${
+                    holdingHand === 'right'
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  اليمنى
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectHoldingHand('left')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors min-h-[30px] ${
+                    holdingHand === 'left'
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  اليسرى
+                </button>
+              </div>
+            </div>
+
             <div className="text-[11px] text-slate-400 mb-1 px-1">
               الوضعيات المتوافقة مع المكان ({validPoseIds.length}):
             </div>
@@ -179,7 +230,7 @@ export function SceneAccordion({
             <div className="min-w-0">
               <span className="block text-xs font-semibold text-white">الكاميرا</span>
               <span className="block text-[11px] text-amber-400/90 font-medium leading-snug line-clamp-2 mt-0.5">
-                {currentCamera?.labelAr || currentCamera?.label}
+                {currentCamera?.labelAr || currentCamera?.label} · {currentImperfection.labelAr}
               </span>
             </div>
           </div>
@@ -192,7 +243,39 @@ export function SceneAccordion({
         </button>
 
         {openSection === 'camera' && (
-          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-1.5 animate-in fade-in-50 duration-150">
+          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-2 animate-in fade-in-50 duration-150">
+            {/* طبيعة اللقطة: واقعية عفوية / ستوري معاصرة */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+              <div>
+                <span className="block text-xs font-medium text-slate-300">طبيعة اللقطة</span>
+                <span className="text-[10px] text-slate-500">محاكاة تحبب ألبوم الكاميرا أو نقاء الستوري</span>
+              </div>
+              <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-slate-800 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => onSelectImperfectionLevel('authentic')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors min-h-[30px] ${
+                    imperfectionLevel === 'authentic'
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  واقعية عفوية
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectImperfectionLevel('raw_candid')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition-colors min-h-[30px] ${
+                    imperfectionLevel === 'raw_candid'
+                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  ستوري معاصرة
+                </button>
+              </div>
+            </div>
+
             <div className="text-[11px] text-slate-400 mb-1 px-1">
               زاوية وهندسة الكاميرا:
             </div>
@@ -430,7 +513,7 @@ export function SceneAccordion({
             <div className="min-w-0">
               <span className="block text-xs font-semibold text-white">الإضاءة</span>
               <span className="block text-[11px] text-amber-400/90 font-medium leading-snug line-clamp-2 mt-0.5">
-                {currentTime?.labelAr || currentTime?.label}
+                {currentTime?.labelAr || currentTime?.label} {location.category !== 'interior' ? `· ${currentWeather.labelAr}` : ''}
               </span>
             </div>
           </div>
@@ -443,7 +526,40 @@ export function SceneAccordion({
         </button>
 
         {openSection === 'lighting' && (
-          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-1.5 animate-in fade-in-50 duration-150">
+          <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-2 animate-in fade-in-50 duration-150">
+            {/* طبيعة الجو والغلاف الجوي للمواقع الخارجية */}
+            {location.category !== 'interior' && (
+              <div className="space-y-1.5 pb-2 border-b border-slate-800/80">
+                <div>
+                  <span className="block text-xs font-medium text-slate-300">أجواء الغلاف الجوي السعودي</span>
+                  <span className="text-[10px] text-slate-500">محاكاة انتشار الضوء والسراب والعوالق الترابية</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['clear_crisp', 'heat_haze', 'dust_suspension'] as WeatherAtmosphere[]).map((wKey) => {
+                    const w = WEATHER_ATMOSPHERES[wKey];
+                    const isSel = weatherAtmosphere === wKey;
+                    return (
+                      <button
+                        key={wKey}
+                        type="button"
+                        onClick={() => onSelectWeatherAtmosphere(wKey)}
+                        className={`py-1.5 px-2 text-xs rounded-lg border text-center transition-all min-h-[32px] ${
+                          isSel
+                            ? 'bg-amber-400/15 border-amber-400/60 text-amber-300 font-semibold'
+                            : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-300'
+                        }`}
+                      >
+                        {w.labelAr}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="text-[11px] text-slate-400 mb-1 px-1">
+              توقيت الإضاءة ومصدر الضوء:
+            </div>
             {(Object.keys(TIMES_OF_DAY) as TimeOfDayId[]).map((tid) => {
               const opt = TIMES_OF_DAY[tid];
               const isSelected = selectedTimeId === tid;
@@ -522,13 +638,14 @@ export function SceneAccordion({
                   <div className="flex items-center gap-1 p-0.5 bg-slate-950 border border-slate-800 rounded-lg">
                     <button
                       type="button"
-                      onClick={() =>
-                        onSelectVehicleSpot(
+                      onClick={() => {
+                        const nonNone = location.supportedVehicleSpots.filter((s) => s !== 'none');
+                        const defaultOrFirst =
                           location.defaultVehicleSpot !== 'none'
                             ? location.defaultVehicleSpot
-                            : 'beside_driver_door'
-                        )
-                      }
+                            : nonNone[0] || 'beside_driver_door';
+                        onSelectVehicleSpot(defaultOrFirst);
+                      }}
                       className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors min-h-[32px] flex items-center gap-1 ${
                         isVehicleActive
                           ? 'bg-amber-400 text-slate-950 font-semibold'

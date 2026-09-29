@@ -72,6 +72,8 @@ export type ExpressionId =
   | 'glancing_off_camera';
 
 export type TargetEngine = 'chatgpt' | 'gemini';
+export type HoldingHand = 'right' | 'left';
+export type WeatherAtmosphere = 'clear_crisp' | 'heat_haze' | 'dust_suspension';
 
 export interface SceneState {
   locationId: LocationId;
@@ -84,6 +86,15 @@ export interface SceneState {
   expressionId: ExpressionId;
   targetEngine: TargetEngine;
   imperfectionLevel: 'authentic' | 'raw_candid';
+  holdingHand: HoldingHand;
+  weatherAtmosphere: WeatherAtmosphere;
+}
+
+export interface FavoriteScene {
+  id: string;
+  timestamp: number;
+  title: string;
+  state: SceneState;
 }
 
 export interface LocationDefinition {

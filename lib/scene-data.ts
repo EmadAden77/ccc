@@ -8,6 +8,8 @@ import {
   ClothingId,
   HairstyleId,
   ExpressionId,
+  HoldingHand,
+  WeatherAtmosphere,
 } from './types';
 
 export const LOCATIONS: Record<LocationId, LocationDefinition> = {
@@ -49,7 +51,7 @@ export const LOCATIONS: Record<LocationId, LocationDefinition> = {
     shortDesc: 'Private villa parking shade with fabric canopy and interlocking pavers',
     shortDescAr: 'مظلة سيارات قماشية داخل فيلا مع بلاط إنترلوك',
     supportsVehicle: true,
-    supportedVehicleSpots: ['inside_driver', 'beside_driver_door', 'leaning_front_fender'],
+    supportedVehicleSpots: ['inside_driver', 'beside_driver_door', 'leaning_front_fender', 'none'],
     defaultVehicleSpot: 'inside_driver',
     defaultPose: 'one_hand_wheel',
     defaultCamera: 'eye_level_natural',
@@ -165,7 +167,7 @@ export const LOCATIONS: Record<LocationId, LocationDefinition> = {
     shortDesc: 'Scenic highway pull-off where paved asphalt meets open desert sand',
     shortDescAr: 'وقفة جانبية على طريق سريع حيث يلتقي الأسفلت بالرمال',
     supportsVehicle: true,
-    supportedVehicleSpots: ['inside_driver', 'beside_driver_door', 'leaning_front_fender', 'vehicle_soft_background'],
+    supportedVehicleSpots: ['leaning_front_fender', 'beside_driver_door', 'inside_driver', 'vehicle_soft_background', 'none'],
     defaultVehicleSpot: 'leaning_front_fender',
     defaultPose: 'front_quarter_angle',
     defaultCamera: 'wide_extended_arm',
@@ -194,7 +196,7 @@ export const LOCATIONS: Record<LocationId, LocationDefinition> = {
     shortDesc: 'Brightly lit fuel station forecourt under wide illuminated canopy',
     shortDescAr: 'ساحة محطة وقود مضاءة بمظلة سقفية عريضة',
     supportsVehicle: true,
-    supportedVehicleSpots: ['inside_driver', 'beside_driver_door', 'leaning_front_fender'],
+    supportedVehicleSpots: ['beside_driver_door', 'leaning_front_fender', 'inside_driver', 'none'],
     defaultVehicleSpot: 'beside_driver_door',
     defaultPose: 'standing_door_frame',
     defaultCamera: 'eye_level_natural',
@@ -777,3 +779,74 @@ export const EXPRESSIONS: Record<ExpressionId, {
     promptSnippet: 'a thoughtful, candid facial expression with gaze naturally directed slightly past the phone screen toward the surroundings',
   },
 };
+
+export const HOLDING_HANDS: Record<HoldingHand, {
+  label: string;
+  labelAr: string;
+  description: string;
+  descriptionAr: string;
+}> = {
+  right: {
+    label: 'Right Hand',
+    labelAr: 'اليد اليمنى',
+    description: 'Smartphone held with dominant right hand, right shoulder slightly raised',
+    descriptionAr: 'حمل الهاتف باليد اليمنى مع امتداد طبيعي للكتف الأيمن',
+  },
+  left: {
+    label: 'Left Hand',
+    labelAr: 'اليد اليسرى',
+    description: 'Smartphone held with left hand, angling perspective and catching side light',
+    descriptionAr: 'حمل الهاتف باليد اليسرى وتوجيه زاوية المشهد والضوء',
+  },
+};
+
+export const WEATHER_ATMOSPHERES: Record<WeatherAtmosphere, {
+  label: string;
+  labelAr: string;
+  description: string;
+  descriptionAr: string;
+  promptSnippet: string;
+}> = {
+  clear_crisp: {
+    label: 'Clear & Crisp',
+    labelAr: 'معتدل صافٍ',
+    description: 'Clean arid atmosphere with sharp visibility and transparent shadows',
+    descriptionAr: 'أجواء صافية مع وضوح بصري عالٍ وظلال نظيفة',
+    promptSnippet: 'crystal-clear arid Saudi atmosphere with pristine atmospheric visibility and natural transparent shadow edges',
+  },
+  heat_haze: {
+    label: 'Dry Arid Heat',
+    labelAr: 'صيف جاف (سراب)',
+    description: 'Warm arid air with subtle heat haze shimmering over distant asphalt',
+    descriptionAr: 'حرارة جافة مع تموجات سرابية خفيفة فوق الأسفلت البعيد ولمعان خفيف',
+    promptSnippet: 'subtle natural heat haze shimmering faintly over the distant asphalt background with authentic desert thermal atmosphere',
+  },
+  dust_suspension: {
+    label: 'Golden Dust Glow',
+    labelAr: 'عوالق ذهبية',
+    description: 'Soft micro-dust particles catching low amber sunbeams in a warm glow',
+    descriptionAr: 'عوالق ترابية ناعمة جداً تشتت أشعة الشمس بوهج كهرماني دافئ',
+    promptSnippet: 'soft micro-fine desert dust particles suspended in the dry air, gently scattering sunlight into a warm natural amber halo',
+  },
+};
+
+export const IMPERFECTION_OPTIONS: Record<'authentic' | 'raw_candid', {
+  label: string;
+  labelAr: string;
+  description: string;
+  descriptionAr: string;
+}> = {
+  authentic: {
+    label: 'Camera Roll Reality',
+    labelAr: 'واقعية عفوية',
+    description: 'Authentic smartphone roll feel: micro ISO grain, subtle dynamic roll-off, natural unedited texture',
+    descriptionAr: 'واقعية ألبوم الكاميرا: تحبب مستشعر طبيعي، ونعومة حركة عفوية خفيفة',
+  },
+  raw_candid: {
+    label: 'Clean Story Capture',
+    labelAr: 'ستوري معاصرة',
+    description: 'Contemporary clean phone capture with sharp focus and restrained computational HDR',
+    descriptionAr: 'لقطة سيلفي معاصرة ونقية مع تركيز بصري حاد وHDR متوازن',
+  },
+};
+

@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { TargetEngine } from '@/lib/types';
 import { CompilationResult } from '@/lib/prompt-compiler';
-import { Copy, Check, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { Copy, Check, ShieldCheck, SlidersHorizontal, Bookmark } from 'lucide-react';
 
 interface PromptViewerProps {
   compilation: CompilationResult;
   targetEngine: TargetEngine;
   onSelectEngine: (engine: TargetEngine) => void;
+  onSaveFavorite?: () => void;
+  isFavoriteSaved?: boolean;
 }
 
 const CHECK_LABELS_AR: Record<string, { labelAr: string; detailAr: string }> = {
@@ -46,6 +48,8 @@ export function PromptViewer({
   compilation,
   targetEngine,
   onSelectEngine,
+  onSaveFavorite,
+  isFavoriteSaved,
 }: PromptViewerProps) {
   const [copied, setCopied] = useState(false);
   const [showInspection, setShowInspection] = useState(false);
@@ -116,7 +120,7 @@ export function PromptViewer({
           </div>
 
           {/* Action Row */}
-          <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={() => setShowInspection(!showInspection)}
@@ -126,27 +130,47 @@ export function PromptViewer({
               <span>{showInspection ? 'إخفاء الفحص' : 'الفحص الفيزيائي'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all min-h-[42px] active:scale-[0.98] ${
-                copied
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/10'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                  <span>تم نسخ الـPrompt!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>نسخ الـPrompt</span>
-                </>
+            <div className="flex items-center gap-2">
+              {onSaveFavorite && (
+                <button
+                  type="button"
+                  onClick={onSaveFavorite}
+                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all min-h-[42px] border ${
+                    isFavoriteSaved
+                      ? 'bg-amber-400/15 border-amber-400/60 text-amber-300'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                  title="حفظ المشهد في المفضلة المحلية"
+                >
+                  <Bookmark
+                    className={`w-3.5 h-3.5 ${isFavoriteSaved ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`}
+                  />
+                  <span>{isFavoriteSaved ? 'تم الحفظ' : 'حفظ'}</span>
+                </button>
               )}
-            </button>
+
+              <button
+                type="button"
+                onClick={handleCopy}
+                className={`inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all min-h-[42px] active:scale-[0.98] ${
+                  copied
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-amber-400/10'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>تم نسخ الـPrompt!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>نسخ الـPrompt</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

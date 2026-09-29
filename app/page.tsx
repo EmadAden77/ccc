@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   LocationId,
   VehicleSpot,
@@ -11,24 +11,34 @@ import {
   HairstyleId,
   ExpressionId,
   TargetEngine,
+  HoldingHand,
+  WeatherAtmosphere,
   SceneState,
+  FavoriteScene,
 } from '@/lib/types';
 import {
   LOCATIONS,
-  POSES,
-  CAMERAS,
   TIMES_OF_DAY,
   CLOTHING_OPTIONS,
   HAIRSTYLES,
   EXPRESSIONS,
 } from '@/lib/scene-data';
+import {
+  getValidVehicleSpots,
+  getValidPoses,
+  getValidCameras,
+  reconcileSceneState,
+} from '@/lib/compatibility';
 import { compilePrompt } from '@/lib/prompt-compiler';
 import { TopNav } from '@/components/TopNav';
 import { LocationPicker } from '@/components/LocationPicker';
 import { SceneAccordion } from '@/components/SceneAccordion';
 import { SceneSummary } from '@/components/SceneSummary';
 import { PromptViewer } from '@/components/PromptViewer';
+import { FavoritesDrawer } from '@/components/FavoritesDrawer';
 import { Sparkles, RotateCcw } from 'lucide-react';
+
+const FAVORITES_STORAGE_KEY = 'saudi_smartphone_selfie_favorites_v1';
 
 const DEFAULT_SCENE_STATE: SceneState = {
   locationId: 'residential_street',
@@ -41,112 +51,75 @@ const DEFAULT_SCENE_STATE: SceneState = {
   expressionId: 'subtle_smirk',
   targetEngine: 'chatgpt',
   imperfectionLevel: 'authentic',
+  holdingHand: 'right',
+  weatherAtmosphere: 'clear_crisp',
 };
 
 export default function HomePage() {
   const [sceneState, setSceneState] = useState<SceneState>(DEFAULT_SCENE_STATE);
-
-  // Helper to determine valid poses based on location & vehicle spot
-  const getValidPoses = useCallback((locId: LocationId, vSpot: VehicleSpot): PoseId[] => {
-    if (vSpot === 'inside_driver') {
-      return ['one_hand_wheel', 'center_armrest_lean', 'casual_seatback_recline', 'side_window_gaze'];
-    }
-    if (vSpot === 'beside_driver_door') {
-      return ['standing_door_frame', 'leaning_against_door', 'standing_weight_shift', 'looking_away_candid'];
-    }
-    if (vSpot === 'leaning_front_fender') {
-      return ['front_quarter_angle', 'standing_weight_shift', 'looking_away_candid'];
-    }
-    if (vSpot === 'walking_past_rear') {
-      return ['walking_mid_stride', 'standing_weight_shift', 'looking_away_candid'];
-    }
-    if (locId === 'elevator_mirror') {
-      return ['elevator_mirror_phone', 'standing_weight_shift'];
-    }
-    if (locId === 'outdoor_cafe') {
-      return ['seated_cafe_table', 'looking_away_candid', 'standing_weight_shift'];
-    }
-    if (locId === 'rooftop_terrace') {
-      return ['rooftop_parapet_lean', 'standing_weight_shift', 'looking_away_candid'];
-    }
-    if (locId === 'stairway_landing') {
-      return ['leaning_wall_railing', 'standing_weight_shift', 'looking_away_candid'];
-    }
-    return ['standing_weight_shift', 'walking_mid_stride', 'looking_away_candid', 'leaning_wall_railing'];
-  }, []);
-
-  // Helper to determine valid camera angles
-  const getValidCameras = useCallback((locId: LocationId, vSpot: VehicleSpot): CameraAngleId[] => {
-    if (locId === 'elevator_mirror') {
-      return ['mirror_reflection_direct'];
-    }
-    if (vSpot === 'inside_driver') {
-      return ['eye_level_natural', 'low_chest_level', 'high_angle_tilt'];
-    }
-    return ['eye_level_natural', 'low_chest_level', 'wide_extended_arm'];
-  }, []);
-
-  // Location selection handler with intelligent contextual adjustment
-  const handleSelectLocation = useCallback(
-    (newLocationId: LocationId) => {
-      const loc = LOCATIONS[newLocationId];
-      let newVehicleSpot = sceneState.vehicleSpot;
-
-      if (!loc.supportsVehicle) {
-        newVehicleSpot = 'none';
-      } else if (newVehicleSpot !== 'none' && !loc.supportedVehicleSpots.includes(newVehicleSpot)) {
-        newVehicleSpot = loc.defaultVehicleSpot;
+  const [favorites, setFavorites] = useState<FavoriteScene[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
       }
+    } catch {
+      // Ignore localStorage errors during SSR/hydration
+    }
+    return [];
+  });
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
 
-      // Re-evaluate pose
-      const validPoses = getValidPoses(newLocationId, newVehicleSpot);
-      const newPoseId = validPoses.includes(sceneState.poseId) ? sceneState.poseId : validPoses[0];
+  const saveFavorites = useCallback((newFavs: FavoriteScene[]) => {
+    setFavorites(newFavs);
+    try {
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newFavs));
+    } catch {
+      // Ignore quota errors
+    }
+  }, []);
 
-      // Re-evaluate camera
-      const validCameras = getValidCameras(newLocationId, newVehicleSpot);
-      const newCameraId = validCameras.includes(sceneState.cameraAngleId)
-        ? sceneState.cameraAngleId
-        : validCameras[0];
-
-      setSceneState((prev) => ({
+  // Location selection handler with centralized deterministic reconciliation
+  const handleSelectLocation = useCallback((newLocationId: LocationId) => {
+    setSceneState((prev) =>
+      reconcileSceneState({
         ...prev,
         locationId: newLocationId,
-        vehicleSpot: newVehicleSpot,
-        poseId: newPoseId,
-        cameraAngleId: newCameraId,
-      }));
-    },
-    [sceneState.vehicleSpot, sceneState.poseId, sceneState.cameraAngleId, getValidPoses, getValidCameras]
-  );
+      })
+    );
+  }, []);
 
-  // Vehicle spot selection handler with contextual pose realignment
-  const handleSelectVehicleSpot = useCallback(
-    (newSpot: VehicleSpot) => {
-      const validPoses = getValidPoses(sceneState.locationId, newSpot);
-      const newPoseId = validPoses.includes(sceneState.poseId) ? sceneState.poseId : validPoses[0];
-
-      const validCameras = getValidCameras(sceneState.locationId, newSpot);
-      const newCameraId = validCameras.includes(sceneState.cameraAngleId)
-        ? sceneState.cameraAngleId
-        : validCameras[0];
-
-      setSceneState((prev) => ({
+  // Vehicle spot selection handler with centralized deterministic reconciliation
+  const handleSelectVehicleSpot = useCallback((newSpot: VehicleSpot) => {
+    setSceneState((prev) =>
+      reconcileSceneState({
         ...prev,
         vehicleSpot: newSpot,
-        poseId: newPoseId,
-        cameraAngleId: newCameraId,
-      }));
-    },
-    [sceneState.locationId, sceneState.poseId, sceneState.cameraAngleId, getValidPoses, getValidCameras]
-  );
+      })
+    );
+  }, []);
 
   // Handlers for individual fields
   const handleSelectPose = useCallback((poseId: PoseId) => {
-    setSceneState((prev) => ({ ...prev, poseId }));
+    setSceneState((prev) =>
+      reconcileSceneState({
+        ...prev,
+        poseId,
+      })
+    );
   }, []);
 
   const handleSelectCamera = useCallback((cameraAngleId: CameraAngleId) => {
-    setSceneState((prev) => ({ ...prev, cameraAngleId }));
+    setSceneState((prev) =>
+      reconcileSceneState({
+        ...prev,
+        cameraAngleId,
+      })
+    );
   }, []);
 
   const handleSelectTime = useCallback((timeOfDayId: TimeOfDayId) => {
@@ -165,6 +138,18 @@ export default function HomePage() {
     setSceneState((prev) => ({ ...prev, expressionId }));
   }, []);
 
+  const handleSelectHoldingHand = useCallback((holdingHand: HoldingHand) => {
+    setSceneState((prev) => ({ ...prev, holdingHand }));
+  }, []);
+
+  const handleSelectWeatherAtmosphere = useCallback((weatherAtmosphere: WeatherAtmosphere) => {
+    setSceneState((prev) => ({ ...prev, weatherAtmosphere }));
+  }, []);
+
+  const handleSelectImperfectionLevel = useCallback((imperfectionLevel: 'authentic' | 'raw_candid') => {
+    setSceneState((prev) => ({ ...prev, imperfectionLevel }));
+  }, []);
+
   const handleSelectEngine = useCallback((targetEngine: TargetEngine) => {
     setSceneState((prev) => ({ ...prev, targetEngine }));
   }, []);
@@ -173,22 +158,18 @@ export default function HomePage() {
     setSceneState(DEFAULT_SCENE_STATE);
   }, []);
 
-  // Randomizer producing physically coherent scenes
+  // Randomizer producing 100% physically coherent scenes with all 4 features
   const handleRandomize = useCallback(() => {
     const locKeys = Object.keys(LOCATIONS) as LocationId[];
     const randomLocKey = locKeys[Math.floor(Math.random() * locKeys.length)];
-    const loc = LOCATIONS[randomLocKey];
 
-    let randomSpot: VehicleSpot = 'none';
-    if (loc.supportsVehicle) {
-      const spots = loc.supportedVehicleSpots;
-      randomSpot = spots[Math.floor(Math.random() * spots.length)];
-    }
+    const validSpots = getValidVehicleSpots(randomLocKey);
+    const randomSpot = validSpots[Math.floor(Math.random() * validSpots.length)];
 
     const validPoses = getValidPoses(randomLocKey, randomSpot);
     const randomPose = validPoses[Math.floor(Math.random() * validPoses.length)];
 
-    const validCameras = getValidCameras(randomLocKey, randomSpot);
+    const validCameras = getValidCameras(randomLocKey, randomSpot, randomPose);
     const randomCam = validCameras[Math.floor(Math.random() * validCameras.length)];
 
     const timeKeys = Object.keys(TIMES_OF_DAY) as TimeOfDayId[];
@@ -203,8 +184,13 @@ export default function HomePage() {
     const exprKeys = Object.keys(EXPRESSIONS) as ExpressionId[];
     const randomExpr = exprKeys[Math.floor(Math.random() * exprKeys.length)];
 
-    setSceneState((prev) => ({
-      ...prev,
+    const randomHand: HoldingHand = Math.random() > 0.5 ? 'right' : 'left';
+    const weathers: WeatherAtmosphere[] = ['clear_crisp', 'heat_haze', 'dust_suspension'];
+    const randomWeather = weathers[Math.floor(Math.random() * weathers.length)];
+    const randomImperfection: 'authentic' | 'raw_candid' = Math.random() > 0.35 ? 'authentic' : 'raw_candid';
+
+    const rawRandomState: SceneState = {
+      ...sceneState,
       locationId: randomLocKey,
       vehicleSpot: randomSpot,
       poseId: randomPose,
@@ -213,26 +199,95 @@ export default function HomePage() {
       clothingId: randomCloth,
       hairstyleId: randomHair,
       expressionId: randomExpr,
-    }));
-  }, [getValidPoses, getValidCameras]);
+      holdingHand: randomHand,
+      weatherAtmosphere: randomWeather,
+      imperfectionLevel: randomImperfection,
+    };
+
+    setSceneState(reconcileSceneState(rawRandomState));
+  }, [sceneState]);
 
   // Derived values
   const activeLocation = LOCATIONS[sceneState.locationId];
   const validPoses = useMemo(
     () => getValidPoses(sceneState.locationId, sceneState.vehicleSpot),
-    [sceneState.locationId, sceneState.vehicleSpot, getValidPoses]
+    [sceneState.locationId, sceneState.vehicleSpot]
   );
   const validCameras = useMemo(
-    () => getValidCameras(sceneState.locationId, sceneState.vehicleSpot),
-    [sceneState.locationId, sceneState.vehicleSpot, getValidCameras]
+    () => getValidCameras(sceneState.locationId, sceneState.vehicleSpot, sceneState.poseId),
+    [sceneState.locationId, sceneState.vehicleSpot, sceneState.poseId]
   );
 
   const compilation = useMemo(() => compilePrompt(sceneState), [sceneState]);
 
+  // Favorites Handlers
+  const isFavoriteSaved = useMemo(() => {
+    return favorites.some(
+      (f) =>
+        f.state.locationId === sceneState.locationId &&
+        f.state.vehicleSpot === sceneState.vehicleSpot &&
+        f.state.poseId === sceneState.poseId &&
+        f.state.cameraAngleId === sceneState.cameraAngleId &&
+        f.state.timeOfDayId === sceneState.timeOfDayId &&
+        f.state.clothingId === sceneState.clothingId &&
+        f.state.hairstyleId === sceneState.hairstyleId &&
+        f.state.holdingHand === sceneState.holdingHand &&
+        f.state.weatherAtmosphere === sceneState.weatherAtmosphere
+    );
+  }, [favorites, sceneState]);
+
+  const handleToggleSaveFavorite = useCallback(() => {
+    if (isFavoriteSaved) {
+      const filtered = favorites.filter(
+        (f) =>
+          !(
+            f.state.locationId === sceneState.locationId &&
+            f.state.vehicleSpot === sceneState.vehicleSpot &&
+            f.state.poseId === sceneState.poseId &&
+            f.state.cameraAngleId === sceneState.cameraAngleId &&
+            f.state.timeOfDayId === sceneState.timeOfDayId &&
+            f.state.clothingId === sceneState.clothingId &&
+            f.state.hairstyleId === sceneState.hairstyleId &&
+            f.state.holdingHand === sceneState.holdingHand &&
+            f.state.weatherAtmosphere === sceneState.weatherAtmosphere
+          )
+      );
+      saveFavorites(filtered);
+    } else {
+      const newFav: FavoriteScene = {
+        id: `fav-${Date.now()}`,
+        timestamp: Date.now(),
+        title: `${activeLocation.nameAr || activeLocation.name}`,
+        state: { ...sceneState },
+      };
+      saveFavorites([newFav, ...favorites]);
+    }
+  }, [isFavoriteSaved, favorites, sceneState, activeLocation, saveFavorites]);
+
+  const handleDeleteFavorite = useCallback(
+    (id: string) => {
+      saveFavorites(favorites.filter((f) => f.id !== id));
+    },
+    [favorites, saveFavorites]
+  );
+
+  const handleClearAllFavorites = useCallback(() => {
+    saveFavorites([]);
+  }, [saveFavorites]);
+
+  const handleApplyFavorite = useCallback((fav: FavoriteScene) => {
+    setSceneState(reconcileSceneState(fav.state));
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-16">
       {/* Top Navigation */}
-      <TopNav onRandomize={handleRandomize} onReset={handleReset} />
+      <TopNav
+        onRandomize={handleRandomize}
+        onReset={handleReset}
+        favoritesCount={favorites.length}
+        onOpenFavorites={() => setIsFavoritesOpen(true)}
+      />
 
       {/* Main Container - Compact Mobile-First Width */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-3.5 sm:px-4 py-3.5 space-y-2.5">
@@ -293,6 +348,12 @@ export default function HomePage() {
             onSelectExpression={handleSelectExpression}
             selectedTimeId={sceneState.timeOfDayId}
             onSelectTime={handleSelectTime}
+            holdingHand={sceneState.holdingHand}
+            onSelectHoldingHand={handleSelectHoldingHand}
+            weatherAtmosphere={sceneState.weatherAtmosphere}
+            onSelectWeatherAtmosphere={handleSelectWeatherAtmosphere}
+            imperfectionLevel={sceneState.imperfectionLevel}
+            onSelectImperfectionLevel={handleSelectImperfectionLevel}
             validPoseIds={validPoses}
             validCameraIds={validCameras}
           />
@@ -309,9 +370,21 @@ export default function HomePage() {
             compilation={compilation}
             targetEngine={sceneState.targetEngine}
             onSelectEngine={handleSelectEngine}
+            onSaveFavorite={handleToggleSaveFavorite}
+            isFavoriteSaved={isFavoriteSaved}
           />
         </section>
       </main>
+
+      {/* Drawer: المفضلة */}
+      <FavoritesDrawer
+        isOpen={isFavoritesOpen}
+        onClose={() => setIsFavoritesOpen(false)}
+        favorites={favorites}
+        onApply={handleApplyFavorite}
+        onDelete={handleDeleteFavorite}
+        onClearAll={handleClearAllFavorites}
+      />
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-800/80 py-4 px-4">
